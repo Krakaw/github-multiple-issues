@@ -52,16 +52,16 @@
           <md-field>
             <label>Description</label>
             <md-textarea v-model="issue.body"></md-textarea>
-
-          </md-field>
-          <md-field>
-            <label>Milestone</label>
-            <md-input v-model="issue.milestone" type="number"></md-input>
-
           </md-field>
           <md-chips v-model="issue.labels" md-placeholder="Add labels..."></md-chips>
+          <div v-for="(repo, i) in repo_list" :key="i">
+            <md-field v-if="selected[i]">
+              <label>Milestone {{repo.full_name}}</label>
+              <md-input v-model="overrideMilestone[i]" type="number"></md-input>
+            </md-field>
+          </div>
 
-          <md-button :disabled="isSubmitting" class="md-raised md-primary" @click="addIssue()">Save</md-button>
+          <md-button :disabled="disableSave" class="md-raised md-primary" @click="addIssue()">Save</md-button>
 
         </md-content>
       </div>
@@ -69,7 +69,8 @@
     </div>
     <md-card v-for="(result, i) in results" :key="i">
       <md-card-media md-position="center" :md-duration="result.duration" md-active.sync="true">
-       <md-icon v-if="result.hasOwnProperty('success')" :style="result.success ? 'color: green' : 'color:red'">{{result.success ? 'check' : 'clear'}}</md-icon> <span>{{result.message}}</span>
+        <md-icon v-if="result.hasOwnProperty('success')" :style="result.success ? 'color: green' : 'color:red'">{{result.success ? 'check' : 'clear'}}</md-icon>
+        <span>{{result.message}}</span>
       </md-card-media>
     </md-card>
   </div>
@@ -89,15 +90,18 @@ export default {
       issue: {
         title: "",
         body: "",
-        labels: [],
-        milestone: ""
+        labels: []
       },
+      overrideMilestone: {},
       isSubmitting: false,
       results: {}
     };
   },
   watch: {},
   computed: {
+    disableSave() {
+      return this.isSubmitting || Object.keys(this.selected).length === 0 || this.issue.title.trim() === '';
+    },
     saveRepos() {
       let repos = [];
       for (let i in this.selected) {
@@ -159,14 +163,16 @@ export default {
           .replace("%repoOwner", repoOwner)
           .replace("%repoName", repoName);
 
-        const finallyFunc = () => {
+        const finallyFunc = (timeout) => {
+          timeout = timeout || 3500
           setTimeout(() => {
             this.$delete(this.results, i);
-          }, 3500);
+            this.isSubmitting = false;
+          }, timeout);
         };
         const issue = Object.assign({}, this.issue);
-        if (!issue.milestone) {
-          delete issue.milestone;
+        if (this.overrideMilestone[i]) {
+          issue.milestone = this.overrideMilestone[i];
         }
         this.$http
           .post(repoUrl, issue, {
@@ -180,11 +186,15 @@ export default {
             finallyFunc();
           })
           .catch(e => {
-            this.$set(this.results, i, {
+            e.json().then((e) => {
+ this.$set(this.results, i, {
               success: false,
-              message: `There was an error saving issue to ${repo.full_name}`
+              message: `There was an error saving issue to ${repo.full_name} ${e.message}`
             });
-            finallyFunc();
+            finallyFunc(10000);
+            })
+           
+            
           });
       });
     },
@@ -204,7 +214,6 @@ export default {
             }
           )
           .then(response => {
-            console.log(response);
             this.$set(this, "repo_list", response);
           });
       }, 500);
