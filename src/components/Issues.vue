@@ -37,7 +37,10 @@
       <div class="md-layout-item">
         <md-content>
           <div v-for="(repo, i) in repo_list" :key="i" style="text-align:left; padding-left:10px;">
-            <md-switch v-model="selected[i]" value="1">{{repo.full_name}} </md-switch> <a style="float:right" :href="`https://www.github.com/${repo.full_name}`" target="_blank"><md-icon>open_in_new</md-icon></a>
+            <md-switch v-model="selected[i]" value="1">{{repo.full_name}} </md-switch>
+            <a style="float:right" :href="`https://www.github.com/${repo.full_name}`" target="_blank">
+              <md-icon>open_in_new</md-icon>
+            </a>
           </div>
 
         </md-content>
@@ -54,10 +57,13 @@
             <md-textarea v-model="issue.body"></md-textarea>
           </md-field>
           <md-chips v-model="issue.labels" md-placeholder="Add labels..."></md-chips>
-          <div v-for="(repo, repoId) in repo_list" :key="repoId">
-            <md-field v-if="selected[repoId]">
+          <div v-for="(repo, repoId) in selectedRepos" :key="repoId">
+            <md-field>
               <label>Milestone {{repo.full_name}}</label>
-              <md-input v-model="overrideMilestone[repoId]" type="number"></md-input>
+              <md-select v-model="overrideMilestone[repoId]">
+                <md-option value="">None</md-option>
+                <md-option v-for="(milestone, i) in repoMilestones[repoId]" :key="i" :value="milestone.number" md-dense>{{milestone.title}}</md-option>
+              </md-select>
             </md-field>
           </div>
 
@@ -73,6 +79,8 @@
         <span>{{result.message}}</span>
       </md-card-media>
     </md-card>
+  <pre>{{repoMilestones}}</pre>
+
   </div>
 </template>
 
@@ -94,11 +102,23 @@ export default {
       },
       overrideMilestone: {},
       isSubmitting: false,
-      results: {}
+      results: {},
+      repoMilestones: {}
     };
   },
   watch: {},
   computed: {
+    selectedRepos() {
+      const repos = {};
+      for (let repoId in this.selected) {
+        if (!this.selected[repoId]) {
+          continue;
+        }
+        repos[repoId] = this.repo_list[repoId];
+        this.fetchMilestones(repoId, repos[repoId].owner.login, repos[repoId].name);
+      }
+      return repos;
+    },
     disableSave() {
       return (
         this.isSubmitting ||
@@ -142,6 +162,15 @@ export default {
     }
   },
   methods: {
+    fetchMilestones(repoId, repoOwner, repoName) {
+      this.$http.get(`https://api.github.com/repos/${repoOwner}/${repoName}/milestones`).then(response => {
+return response.json();
+      }, (e) => {
+        return [];
+      }).then(milestones => {
+        this.$set(this.repoMilestones, repoId, milestones);
+      })
+    },
     addIssue() {
       this.$set(this, "results", {});
       this.isSubmitting = true;
