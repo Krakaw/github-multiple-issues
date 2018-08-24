@@ -76,10 +76,9 @@
     <md-card v-for="(result, i) in results" :key="i">
       <md-card-media md-position="center" :md-duration="result.duration" md-active.sync="true">
         <md-icon v-if="result.hasOwnProperty('success')" :style="result.success ? 'color: green' : 'color:red'">{{result.success ? 'check' : 'clear'}}</md-icon>
-        <span>{{result.message}}</span>
+        <span>{{result.message}}</span> q
       </md-card-media>
     </md-card>
-  <pre>{{repoMilestones}}</pre>
 
   </div>
 </template>
@@ -115,7 +114,11 @@ export default {
           continue;
         }
         repos[repoId] = this.repo_list[repoId];
-        this.fetchMilestones(repoId, repos[repoId].owner.login, repos[repoId].name);
+        this.fetchMilestones(
+          repoId,
+          repos[repoId].owner.login,
+          repos[repoId].name
+        );
       }
       return repos;
     },
@@ -163,13 +166,19 @@ export default {
   },
   methods: {
     fetchMilestones(repoId, repoOwner, repoName) {
-      this.$http.get(`https://api.github.com/repos/${repoOwner}/${repoName}/milestones`).then(response => {
-return response.json();
-      }, (e) => {
-        return [];
-      }).then(milestones => {
-        this.$set(this.repoMilestones, repoId, milestones);
-      })
+      this.$http
+        .get(`https://api.github.com/repos/${repoOwner}/${repoName}/milestones`)
+        .then(
+          response => {
+            return response.json();
+          },
+          e => {
+            return [];
+          }
+        )
+        .then(milestones => {
+          this.$set(this.repoMilestones, repoId, milestones);
+        });
     },
     addIssue() {
       this.$set(this, "results", {});
