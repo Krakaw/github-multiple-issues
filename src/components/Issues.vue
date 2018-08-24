@@ -73,8 +73,6 @@
         <span>{{result.message}}</span>
       </md-card-media>
     </md-card>
-    <pre>{{overrideMilestone}}</pre>
-    <pre>{{selected}}</pre>
   </div>
 </template>
 
