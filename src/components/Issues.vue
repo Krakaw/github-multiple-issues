@@ -37,7 +37,7 @@
       <div class="md-layout-item">
         <md-content>
           <div v-for="(repo, i) in repo_list" :key="i" style="text-align:left; padding-left:10px;">
-            <md-switch v-model="selected[i]" value="1">{{repo.full_name}}</md-switch>
+            <md-switch v-model="selected[i]" value="1">{{repo.full_name}} </md-switch> <a style="float:right" :href="`https://www.github.com/${repo.full_name}`" target="_blank"><md-icon>open_in_new</md-icon></a>
           </div>
 
         </md-content>
@@ -54,10 +54,10 @@
             <md-textarea v-model="issue.body"></md-textarea>
           </md-field>
           <md-chips v-model="issue.labels" md-placeholder="Add labels..."></md-chips>
-          <div v-for="(repo, i) in repo_list" :key="i">
-            <md-field v-if="selected[i]">
+          <div v-for="(repo, repoId) in repo_list" :key="repoId">
+            <md-field v-if="selected[repoId]">
               <label>Milestone {{repo.full_name}}</label>
-              <md-input v-model="overrideMilestone[i]" type="number"></md-input>
+              <md-input v-model="overrideMilestone[repoId]" type="number"></md-input>
             </md-field>
           </div>
 
@@ -73,6 +73,8 @@
         <span>{{result.message}}</span>
       </md-card-media>
     </md-card>
+    <pre>{{overrideMilestone}}</pre>
+    <pre>{{selected}}</pre>
   </div>
 </template>
 
@@ -85,8 +87,8 @@ export default {
   data() {
     return {
       orgsTimeout: false,
-      repo_list: [],
-      selected: {},
+      repo_list: {},
+      selected: {}, //Selected ID's
       issue: {
         title: "",
         body: "",
@@ -100,16 +102,11 @@ export default {
   watch: {},
   computed: {
     disableSave() {
-      return this.isSubmitting || Object.keys(this.selected).length === 0 || this.issue.title.trim() === '';
-    },
-    saveRepos() {
-      let repos = [];
-      for (let i in this.selected) {
-        if (this.selected[i]) {
-          repos.push(this.repo_list[i]);
-        }
-      }
-      return repos;
+      return (
+        this.isSubmitting ||
+        Object.keys(this.selected).length === 0 ||
+        this.issue.title.trim() === ""
+      );
     },
     orgOrUser: {
       get() {
@@ -153,8 +150,13 @@ export default {
 
       const auth = `Basic ${btoa(this.username + ":" + this.password)}`;
       const url = "https://api.github.com/repos/%repoOwner/%repoName/issues";
-      this.saveRepos.forEach((repo, i) => {
-        this.$set(this.results, i, {
+
+      for (let repoId in this.selected) {
+        if (!this.selected[repoId]) {
+          continue;
+        }
+        const repo = this.repo_list[repoId];
+        this.$set(this.results, repoId, {
           message: `Saving issue to ${repo.full_name}`
         });
         const repoOwner = repo.owner.login;
@@ -163,40 +165,40 @@ export default {
           .replace("%repoOwner", repoOwner)
           .replace("%repoName", repoName);
 
-        const finallyFunc = (timeout) => {
-          timeout = timeout || 3500
+        const finallyFunc = timeout => {
+          timeout = timeout || 3500;
           setTimeout(() => {
-            this.$delete(this.results, i);
+            this.$delete(this.results, repoId);
             this.isSubmitting = false;
           }, timeout);
         };
         const issue = Object.assign({}, this.issue);
-        if (this.overrideMilestone[i]) {
-          issue.milestone = this.overrideMilestone[i];
+        if (this.overrideMilestone[repoId]) {
+          issue.milestone = this.overrideMilestone[repoId];
         }
         this.$http
           .post(repoUrl, issue, {
             headers: { Authorization: auth }
           })
           .then(result => {
-            this.$set(this.results, i, {
+            this.$set(this.results, repoId, {
               success: true,
               message: `Successfully saved issue to ${repo.full_name}`
             });
             finallyFunc();
           })
           .catch(e => {
-            e.json().then((e) => {
- this.$set(this.results, i, {
-              success: false,
-              message: `There was an error saving issue to ${repo.full_name} ${e.message}`
+            e.json().then(e => {
+              this.$set(this.results, repoId, {
+                success: false,
+                message: `There was an error saving issue to ${
+                  repo.full_name
+                } ${e.message}`
+              });
+              finallyFunc(10000);
             });
-            finallyFunc(10000);
-            })
-           
-            
           });
-      });
+      }
     },
     fetchRepos() {
       clearTimeout(this.orgsTimeout);
@@ -214,7 +216,11 @@ export default {
             }
           )
           .then(response => {
-            this.$set(this, "repo_list", response);
+            let repos = {};
+            response.forEach(repo => {
+              repos[repo.id] = repo;
+            });
+            this.$set(this, "repo_list", repos);
           });
       }, 500);
     }
