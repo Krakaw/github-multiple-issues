@@ -1,5 +1,19 @@
 <template>
   <md-app id="app" class="md-app">
+    <md-app-toolbar class="md-accent">
+      <div class="md-toolbar-row">
+        <div class="md-toolbar-section-start">
+          <span class="md-title">Github Multiple Issues</span>
+
+        </div>
+        <div class="md-toolbar-section-end">
+          <img style="height: 64px;" src="logo.png" alt="logo">
+        </div>
+
+      </div>
+
+    </md-app-toolbar>
+
     <md-app-content>
       <Issues />
       <span class="version">{{version}}</span>

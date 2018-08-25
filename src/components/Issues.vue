@@ -6,14 +6,14 @@
           <md-field>
             <label for="movie">Org / User</label>
             <md-select v-model="orgOrUser">
-              <md-option value="orgs">org</md-option>
-              <md-option value="users">user</md-option>
+              <md-option value="orgs">Organization</md-option>
+              <md-option value="users">User</md-option>
             </md-select>
           </md-field>
         </div>
         <div class="md-layout-item">
           <md-field>
-            <label>Org Name</label>
+            <label>Name</label>
             <md-input v-model="orgName"></md-input>
           </md-field>
         </div>
