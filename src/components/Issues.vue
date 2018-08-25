@@ -231,9 +231,13 @@ export default {
       }
     },
     fetchRepos() {
+      this.fetchingRepoLoading = true;
       clearTimeout(this.orgsTimeout);
       this.orgsTimeout = setTimeout(() => {
-        if (!this.orgName) return;
+        if (!this.orgName) {
+          this.fetchingRepoLoading = false;
+          return;
+        }
         this.$http
           .get(`https://api.github.com/${this.orgOrUser}/${this.orgName}/repos`)
           .then(
