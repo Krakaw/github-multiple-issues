@@ -33,15 +33,19 @@
         </div>
       </div>
     </div>
+
     <div class="md-layout">
       <div class="md-layout-item">
         <md-content>
-          <div v-for="(repo, i) in repo_list" :key="i" style="text-align:left; padding-left:10px;">
+          <span v-if="!fetchingRepoLoading && Object.keys(repo_list).length === 0">No repositories found</span>
+          <div v-if="!fetchingRepoLoading" v-for="(repo, i) in repo_list" :key="i" style="text-align:left; padding-left:10px;">
+
             <md-switch v-model="selected[i]" value="1">{{repo.full_name}} </md-switch>
             <a style="float:right" :href="`https://www.github.com/${repo.full_name}`" target="_blank">
               <md-icon>open_in_new</md-icon>
             </a>
           </div>
+          <md-progress-spinner v-if="fetchingRepoLoading" md-mode="indeterminate"></md-progress-spinner>
 
         </md-content>
 
@@ -76,7 +80,7 @@
     <md-card v-for="(result, i) in results" :key="i">
       <md-card-media md-position="center" :md-duration="result.duration" md-active.sync="true">
         <md-icon v-if="result.hasOwnProperty('success')" :style="result.success ? 'color: green' : 'color:red'">{{result.success ? 'check' : 'clear'}}</md-icon>
-        <span>{{result.message}}</span> q
+        <span v-html="result.message"></span>
       </md-card-media>
     </md-card>
 
@@ -101,11 +105,31 @@ export default {
       },
       overrideMilestone: {},
       isSubmitting: false,
+      fetchingRepoLoading: true,
       results: {},
-      repoMilestones: {}
+      repoMilestones: {},
+      orgOrUser: "orgs",
+      orgName: "",
+      username: "",
+      password: ""
     };
   },
-  watch: {},
+  watch: {
+    orgOrUser(val) {
+      localStorage.setItem("orgOrUser", val);
+      this.fetchRepos();
+    },
+    orgName(val) {
+      localStorage.setItem("orgName", val);
+      this.fetchRepos();
+    },
+    username(val) {
+      localStorage.setItem("username", val);
+    },
+    password(val) {
+      localStorage.setItem("password", val);
+    }
+  },
   computed: {
     selectedRepos() {
       const repos = {};
@@ -128,40 +152,6 @@ export default {
         Object.keys(this.selected).length === 0 ||
         this.issue.title.trim() === ""
       );
-    },
-    orgOrUser: {
-      get() {
-        return localStorage.getItem("orgOrUser") || "orgs";
-      },
-      set(val) {
-        localStorage.setItem("orgOrUser", val);
-        this.fetchRepos();
-      }
-    },
-    orgName: {
-      get() {
-        return localStorage.getItem("orgName") || "";
-      },
-      set(val) {
-        localStorage.setItem("orgName", val);
-        this.fetchRepos();
-      }
-    },
-    username: {
-      get() {
-        return localStorage.getItem("username") || "";
-      },
-      set(val) {
-        localStorage.setItem("username", val);
-      }
-    },
-    password: {
-      get() {
-        return localStorage.getItem("password") || "";
-      },
-      set(val) {
-        localStorage.setItem("password", val);
-      }
     }
   },
   methods: {
@@ -217,11 +207,15 @@ export default {
             headers: { Authorization: auth }
           })
           .then(result => {
-            this.$set(this.results, repoId, {
-              success: true,
-              message: `Successfully saved issue to ${repo.full_name}`
+            result.json().then(result => {
+              this.$set(this.results, repoId, {
+                success: true,
+                message: `Successfully saved issue <a target="_blank" href="${
+                  result.html_url
+                }">#${result.number}</a> to ${repo.full_name}`
+              });
+              finallyFunc(7500);
             });
-            finallyFunc();
           })
           .catch(e => {
             e.json().then(e => {
@@ -247,8 +241,9 @@ export default {
               // get body data
               return response.json();
             },
-            response => {
+            () => {
               // error callback
+              return [];
             }
           )
           .then(response => {
@@ -257,12 +252,16 @@ export default {
               repos[repo.id] = repo;
             });
             this.$set(this, "repo_list", repos);
+            this.fetchingRepoLoading = false;
           });
       }, 500);
     }
   },
-  created() {
-    // const org = "big-neon";
+  mounted() {
+    this.orgOrUser = localStorage.getItem("orgOrUser") || "orgs";
+    this.orgName = localStorage.getItem("orgName") || "";
+    this.username = localStorage.getItem("username") || "";
+    this.password = localStorage.getItem("password") || "";
     this.fetchRepos();
   }
 };
