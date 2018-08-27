@@ -1,6 +1,10 @@
 # Github Multiple Issues
 
-Post the same issue to multiple repositories.
+Post the same issue to multiple repositories. 
+
+Stores your user details in localStorage if you provide them.
+
+[https://krakaw.github.io/github-multiple-issues](https://krakaw.github.io/github-multiple-issues)
 
 ## Project setup
 
